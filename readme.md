@@ -2,6 +2,8 @@
 
 The isic-tree-crwler project is a two-stage data extraction tool (JavaScript and Python) designed to crawl and export hierarchical tree structures from the web, specifically targeting Iranian industrial product (ISIC) data
 
+<img width="2752" height="1536" alt="HTML_to_Spreadsheet_Transformation_Pipeline" src="https://github.com/user-attachments/assets/24b99f60-866d-4888-b577-fd3bf5931eae" />
+
 > Project Overview
 
 This project automates the extraction of complex, dynamically loaded tree structures from web pages
@@ -22,7 +24,18 @@ It solves the challenge of capturing nested data by first expanding all branches
 * **JavaScript**: For DOM manipulation and asynchronous tree expansion
 * **Python3**: For offline data processing and file generation
 * **BeautifulSoup4**: For robust HTML parsing
-* **Openpyxl**: For creating and formatting Excel spreadsheets 
+* **Openpyxl**: For creating and formatting Excel spreadsheets
+
+<img width="225" height="225" alt="javascript" src="https://github.com/user-attachments/assets/53fef973-be15-4c63-8d55-50c0c1e29608" /> <img width="225" height="225" alt="python" src="https://github.com/user-attachments/assets/d90a5fd0-4a38-425a-b52e-751cf852fe04" /> 
+
+<img width="300" height="168" alt="Openpyxl" src="https://github.com/user-attachments/assets/a4dbe8ba-8de0-4629-9340-a826636c146a" /> <img width="396" height="127" alt="beautifulsoup" src="https://github.com/user-attachments/assets/6bbb171a-72d2-4736-b5d8-b29c22a32846" /> 
+
+
+
+
+To install Package use below command
+
+`pip install -r requirements.txt`
 
 > Workflow
 
@@ -40,6 +53,8 @@ The final output includes the following attributes for every item
 * **Title**: The Persian name/description of the product or category.
 * **Tree Layer**: The depth of the item within the hierarchy.
 * **Node Type**: Categorizes the entry as a "Branch" (category) or "Leaf" (final product)
+
+<img width="3028" height="4937" alt="NotebookLM Mind Map (1)" src="https://github.com/user-attachments/assets/1d276eb7-6ea9-4c14-bd44-9970f8b21378" />
 
 > [!NOTE]
 > This project follows a two-stage extraction process: first, an asynchronous JavaScript script expands the tree structure in your browser, and then a Python script parses the saved HTML to generate an Excel file
