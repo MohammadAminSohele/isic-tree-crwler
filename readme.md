@@ -42,7 +42,7 @@ To install Package use below command
 
 > Workflow
 
-* **Browser-Side Expansion**: Execute the **safeExpandTree** script in the browser's developer console while on the target website
+* **Browser-Side Expansion**: Execute the **tree_expander.js** script in the browser's developer console while on the target website
 This ensures all "lazy-loaded" or hidden data is visible in the DOM. Once finished, save the page as an HTML file (e.g., **isic_tree.html**)
 
 * **Server-Side Parsing**: The Python script processes the saved HTML file 
