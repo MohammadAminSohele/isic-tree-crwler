@@ -25,12 +25,15 @@ It solves the challenge of capturing nested data by first expanding all branches
 * **Python3**: For offline data processing and file generation
 * **BeautifulSoup4**: For robust HTML parsing
 * **Openpyxl**: For creating and formatting Excel spreadsheets
+  
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
+![BeautifulSoup](https://img.shields.io/badge/Beautiful%20Soup-4-green?style=for-the-badge)
+![Excel](https://img.shields.io/badge/Microsoft_Excel-217346?style=for-the-badge&logo=microsoft-excel&logoColor=white)
 
 <img width="225" height="225" alt="javascript" src="https://github.com/user-attachments/assets/53fef973-be15-4c63-8d55-50c0c1e29608" /> <img width="225" height="225" alt="python" src="https://github.com/user-attachments/assets/d90a5fd0-4a38-425a-b52e-751cf852fe04" /> 
 
 <img width="300" height="168" alt="Openpyxl" src="https://github.com/user-attachments/assets/a4dbe8ba-8de0-4629-9340-a826636c146a" /> <img width="396" height="127" alt="beautifulsoup" src="https://github.com/user-attachments/assets/6bbb171a-72d2-4736-b5d8-b29c22a32846" /> 
-
-
 
 
 To install Package use below command
