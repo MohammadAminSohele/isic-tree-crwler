@@ -1,168 +1,243 @@
 from bs4 import BeautifulSoup
 import json
-import re
-from openpyxl import Workbook
+import os
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
+from datetime import datetime
 
-def parse_isic_tree(html_content):
-    """
-    Extracts information (code, title, level, type) from the ISIC tree in the HTML file.
-    """
-    soup = BeautifulSoup(html_content, 'html.parser')
-    rows = soup.select('table#isic_tree tbody tr')
 
-    results = []
-    for row in rows:
-        # 1.extract code 
-        code_td = row.find('td')
-        if not code_td:
-            continue
-        code = code_td.get_text(strip=True)
+# -----------------------------
+# خواندن فایل HTML
+# -----------------------------
+with open("clicked_html.html", "r", encoding="utf-8") as f:
+    html_content = f.read()
 
-        # 2. extract title,level
-        title_span = row.select_one('td:nth-of-type(2) span.fancytree-title')
-        if not title_span:
-            continue
-        title = title_span.get_text(strip=True)
+soup = BeautifulSoup(html_content, "html.parser")
 
-        # calculate level from padding-right
-        node_span = row.select_one('td:nth-of-type(2) span.fancytree-node')
-        level = 1
-        if node_span and node_span.get('style'):
-            style = node_span['style']
-            match = re.search(r'padding-right:\s*(\d+)px', style)
-            if match:
-                padding = int(match.group(1))
-                level = (padding // 20) + 1
+# پیدا کردن همه پنل‌ها
+panels = soup.find_all(
+    "div",
+    {"id": lambda x: x and x.startswith("jsPanel-")}
+)
 
-        # 3. detect branch,leaf
-        row_classes = row.get('class', [])
+print(f"🔍 تعداد پنل‌های پیدا شده: {len(panels)}")
+
+
+# -----------------------------
+# استخراج اطلاعات هر محصول
+# -----------------------------
+def extract_product_info(panel):
+
+    details = panel.find("div", class_="viewport_isic_details")
+    if not details:
+        return None
+
+    def extract_value(label_text):
+        label = details.find("div", string=label_text)
+        if label:
+            value_div = label.find_next("div", class_="c-dir")
+            if value_div:
+                return value_div.get_text(strip=True)
+        return "-"
+
+    title_path = "-"
+    title_label = details.find("div", string="عنوان مسیر")
+
+    if title_label:
+        title_div = title_label.find_next("div", class_="c-dir")
+        if title_div:
+            title_path = title_div.get_text(strip=True)
+
+    return {
+        "عنوان مسیر": title_path,
+        "عنوان فارسی": extract_value("عنوان فارسی:"),
+        "عنوان انگلیسی": extract_value("عنوان انگلیسی:"),
+        "کد محصول (ISIC)": extract_value("کدمحصول (ISIC):"),
+        "کد تعرفه گمرکی": extract_value("کد تعرفه گمرکی:"),
+        "واحد سنجش 1": extract_value("واحد سنجش 1:"),
+        "واحد سنجش 2": extract_value("واحد سنجش 2:"),
+        "رده‌بندی زیستی": extract_value("رده‌بندی زیستی:"),
+        "حوزه کاربری": extract_value("حوزه کاربری:"),
+        "عنوان بالادستی": extract_value("عنوان بالادستی:"),
+        "سطح": extract_value("سطح:"),
+        "معاونت": extract_value("معاونت:"),
+        "دفتر تخصصی": extract_value("دفتر تخصصی:"),
+        "ISIC 3": extract_value("ISIC 3:"),
+        "ISIC 4": extract_value("ISIC 4:"),
+        "کد 8 رقمی": extract_value("کد 8 رقمی:"),
+        "کدرهگیری": extract_value("کدرهگیری:"),
+        "تعداد جواز": extract_value("تعداد جواز:"),
+        "تعداد پروانه": extract_value("تعداد پروانه:"),
+        "تقسیم بندی BEC": extract_value("تقسیم بندی BEC:"),
+        "شناسه CPC": extract_value("شناسه CPC:"),
+        "SYS": extract_value("SYS:"),
+        "Selection": extract_value("Selection:"),
+        "تاریخ استخراج": datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # اضافه کردن تاریخ استخراج
+    }
+
+
+# -----------------------------
+# استخراج همه محصولات
+# -----------------------------
+all_products = []
+
+for panel in panels:
+    info = extract_product_info(panel)
+    if info:
+        all_products.append(info)
+
+print(f"✅ تعداد محصولات استخراج شده: {len(all_products)}")
+
+
+# -----------------------------
+# ذخیره JSON
+# -----------------------------
+with open("products_info.json", "w", encoding="utf-8") as f:
+    json.dump(all_products, f, ensure_ascii=False, indent=2)
+
+print("💾 فایل products_info.json ذخیره شد.")
+
+
+# -----------------------------
+# ذخیره Excel با قابلیت افزودن به انتها
+# -----------------------------
+def save_products_to_excel(products, filename="products_info.xlsx"):
+    
+    headers = [
+        "عنوان مسیر",
+        "عنوان فارسی",
+        "عنوان انگلیسی",
+        "کد محصول (ISIC)",
+        "کد تعرفه گمرکی",
+        "واحد سنجش 1",
+        "واحد سنجش 2",
+        "رده‌بندی زیستی",
+        "حوزه کاربری",
+        "عنوان بالادستی",
+        "سطح",
+        "معاونت",
+        "دفتر تخصصی",
+        "ISIC 3",
+        "ISIC 4",
+        "کد 8 رقمی",
+        "کدرهگیری",
+        "تعداد جواز",
+        "تعداد پروانه",
+        "تقسیم بندی BEC",
+        "شناسه CPC",
+        "SYS",
+        "Selection",
+        "تاریخ استخراج"  # ستون جدید برای تاریخ
+    ]
+
+    # بررسی وجود فایل
+    if os.path.exists(filename):
+        print(f"📂 فایل {filename} پیدا شد. اضافه کردن به انتهای فایل...")
+        wb = load_workbook(filename)
+        ws = wb.active
         
-        if 'fancytree-folder' in row_classes:
-            expander = row.select_one('td:nth-of-type(2) span.fancytree-expander')
-            if expander and 'fancytree-expander' in expander.get('class', []):
-                if 'fancytree-empty' not in expander.get('class', []):
-                    node_type = 'شاخه'
-                else:
-                    node_type = 'برگ'
-            else:
-                node_type = 'برگ'
+        # پیدا کردن آخرین ردیف دارای داده
+        last_row = ws.max_row
+        
+        # اگر فایل خالی است یا فقط هدر دارد، از ردیف 1 شروع کن
+        if last_row <= 1:
+            start_row = 2
         else:
-            node_type = 'برگ'
+            start_row = last_row + 1
+            
+    else:
+        print(f"📄 ایجاد فایل جدید {filename}...")
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "اطلاعات محصولات"
+        
+        # استایل هدر
+        header_font = Font(
+            name="B Nazanin",
+            size=12,
+            bold=True,
+            color="FFFFFF"
+        )
+        
+        header_fill = PatternFill(
+            fill_type="solid",
+            start_color="4150B7",
+            end_color="4150B7"
+        )
+        
+        header_alignment = Alignment(
+            horizontal="center",
+            vertical="center",
+            wrap_text=True
+        )
+        
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+        
+        start_row = 2
 
-        results.append({
-            'کدمحصول': code,
-            'عنوان': title,
-            'لایه درخت': level,
-            'نوع': node_type
-        })
-
-    return results
-
-def save_to_excel(data, filename='isic_data.xlsx'):
-    """
-    store extracted data in excel with format right to left
-    """
-    # Create worksheet
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "درختواره محصولات"
-
-    # Set header with new name
-    headers = ['کدمحصول', 'عنوان', 'لایه درخت', 'نوع']
+    # تعریف استایل‌ها
+    data_font = Font(name="B Nazanin", size=11)
+    right_align = Alignment(horizontal="right", vertical="center", wrap_text=True)
+    center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
     
-    # Set style for header (right to left)
-    header_font = Font(name='B Nazanin', size=12, bold=True, color='FFFFFF')
-    header_fill = PatternFill(start_color='4150B7', end_color='4150B7', fill_type='solid')
-    header_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    numeric_columns = {
+        "کد محصول (ISIC)",
+        "کد تعرفه گمرکی",
+        "ISIC 3",
+        "ISIC 4",
+        "کد 8 رقمی",
+        "کدرهگیری",
+        "تعداد جواز",
+        "تعداد پروانه",
+        "SYS",
+        "Selection"
+    }
     
-    # Write header in first row (right to left)
-    for col_idx, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_idx, value=header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = header_alignment
+    row_fill = PatternFill(
+        fill_type="solid",
+        start_color="F8FBFF",
+        end_color="F8FBFF"
+    )
     
-    # set style for data(Align Right)
-    data_font = Font(name='B Nazanin', size=11)
-    data_alignment_right = Alignment(horizontal='right', vertical='center', wrap_text=True)
-    data_alignment_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    
-    # Counting row number start from row 2 (row 1 set for header)
-    for row_idx, item in enumerate(data, 2):
+    # اضافه کردن داده‌های جدید
+    for row_offset, product in enumerate(products):
+        row_num = start_row + row_offset
         
-        # Column 1 : ProductCode(Center)
-        cell = ws.cell(row=row_idx, column=1, value=item['کدمحصول'])
-        cell.font = data_font
-        cell.alignment = data_alignment_center
-        
-        # Column 2 : Title(Align Right)
-        cell = ws.cell(row=row_idx, column=2, value=item['عنوان'])
-        cell.font = data_font
-        cell.alignment = data_alignment_right
-        
-        # ستون 3: لایه درخت (وسط‌چین)
-        # Column 3 : Tree layer(Center)
-        cell = ws.cell(row=row_idx, column=3, value=item['لایه درخت'])
-        cell.font = data_font
-        cell.alignment = data_alignment_center
-        
-        # ستون 4: نوع (وسط‌چین)
-        # Column 4 : Type(Center)
-        cell = ws.cell(row=row_idx, column=4, value=item['نوع'])
-        cell.font = data_font
-        cell.alignment = data_alignment_center
-        
-        # Coloring Rows base on type
-        if item['نوع'] == 'شاخه':
-            fill = PatternFill(start_color='E6F3FF', end_color='E6F3FF', fill_type='solid')
-            for col in range(1, 5):
-                ws.cell(row=row_idx, column=col).fill = fill
-        else:  
-            fill = PatternFill(start_color='F0FFF0', end_color='F0FFF0', fill_type='solid')
-            for col in range(1, 5):
-                ws.cell(row=row_idx, column=col).fill = fill
+        for col, header in enumerate(headers, 1):
+            value = product.get(header, "-")
+            cell = ws.cell(row=row_num, column=col, value=value)
+            cell.font = data_font
+            
+            if header in numeric_columns:
+                cell.alignment = center_align
+            else:
+                cell.alignment = right_align
+            
+            cell.fill = row_fill
     
-    # set width of Columns
-    ws.column_dimensions['A'].width = 20  # Product Code
-    ws.column_dimensions['B'].width = 50  # Title
-    ws.column_dimensions['C'].width = 15  # Tree layer
-    ws.column_dimensions['D'].width = 15  # Type
+    # تنظیم خودکار عرض ستون‌ها (فقط برای ستون‌هایی که جدیدن ایجاد شدن)
+    for column_cells in ws.columns:
+        max_length = 0
+        for cell in column_cells:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+        ws.column_dimensions[
+            get_column_letter(column_cells[0].column)
+        ].width = min(max_length + 5, 60)
     
-    # Set page as Right to Left
     ws.sheet_view.rightToLeft = True
+    ws.freeze_panes = "A2"
     
-    # Freese Row 1 (headers)
-    ws.freeze_panes = 'A2'
-
-    # Store File
     wb.save(filename)
-    print(f"فایل Excel با موفقیت در '{filename}' ذخیره شد.")
-    print(f"تعداد {len(data)} رکورد ذخیره شد.")
-    print("جهت صفحه: راست به چپ (RTL)")
+    print(f"✅ {len(products)} رکورد جدید به فایل {filename} اضافه شد.")
+    print(f"📊 تعداد کل رکوردها در فایل: {ws.max_row - 1}")
 
-""" Use From HTML File Source """
 
-# Read HTML File
-with open('isic_tree.html', 'r', encoding='utf-8') as f:
-    html_data = f.read()
+save_products_to_excel(all_products)
 
-# Extract Data
-parsed_data = parse_isic_tree(html_data)
-
-# Store in Excel
-save_to_excel(parsed_data, 'isic_data.xlsx')
-
-# show Statistics
-branches = sum(1 for item in parsed_data if item['نوع'] == 'شاخه')
-leaves = sum(1 for item in parsed_data if item['نوع'] == 'برگ')
-print(f"\nآمار استخراج شده:")
-print(f"تعداد کل: {len(parsed_data)}")
-print(f"تعداد شاخه‌ها: {branches}")
-print(f"تعداد برگ‌ها: {leaves}")
-
-# Show some of data for confirmation
-print("\nنمونه‌هایی از داده‌های استخراج شده:")
-for item in parsed_data[:5]:
-    print(f"کدمحصول: {item['کدمحصول']}, عنوان: {item['عنوان'][:30]}..., لایه درخت: {item['لایه درخت']}, نوع: {item['نوع']}")
+print("🎉 عملیات با موفقیت انجام شد.")
